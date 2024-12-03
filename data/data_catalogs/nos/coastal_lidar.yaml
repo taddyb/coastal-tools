@@ -1,0 +1,28 @@
+---
+meta:
+  version: 0.0.1
+  name: coastal_lidar
+  category: topography
+
+coastal_lidar:
+  crs: 6344
+  data_type: RasterDataset
+  driver: raster
+  driver_kwargs:
+    chunks:
+      x: 3600
+      y: 3600
+  meta:
+    category: topography
+    paper_doi: https://coast.noaa.gov/digitalcoast/data/coastallidar.html 
+    source_license: Open Data. There are no restrictions on the use of this data.
+    source_url: https://aws.amazon.com/marketplace/pp/prodview-wssgafxllqgsu#overview
+    source_spatial_extent:
+      West: -180.0
+      South: -60.0
+      East: 180.0
+      North: 80.0
+  version: 1.0
+  path:  s3://noaa-nos-coastal-lidar-pds/dem/TX_Coastal_DEM_2018_8899/TX_Coastal_DEM_2018_EPSG-6344.vrt
+  rename:
+    coastal_lidar: elevtn
