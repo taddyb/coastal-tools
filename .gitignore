@@ -164,6 +164,9 @@ cython_debug/
 # VCS versioning
 src/coastal_fim/_version.py
 coastal_fim/version.py
+data/hydromt_root
+*.DS_Store
+
 
 Pipfile
 .Rproj.user

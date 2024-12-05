@@ -1,10 +1,10 @@
 ---
 meta:
   version: 0.0.1
-  name: coastal_lidar
+  name: ncei_bathymetry
   category: topography
 
-coastal_lidar:
+ncei_bathymetry:
   crs: 6344
   data_type: RasterDataset
   driver: raster
@@ -25,4 +25,4 @@ coastal_lidar:
   version: 1.0
   path:  s3://noaa-nos-coastal-lidar-pds/dem/TX_Coastal_DEM_2018_8899/TX_Coastal_DEM_2018_EPSG-6344.vrt
   rename:
-    coastal_lidar: elevtn
+    ncei_bathymetry: elevtn
