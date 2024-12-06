@@ -1,17 +1,11 @@
-import os
-from datetime import datetime
 from pathlib import Path
 
-import numpy as np
-import networkx as nx
-import pandas as pd
 import geopandas as gpd
+import numpy as np
+import pandas as pd
 import xarray as xr
+from hydromt_sfincs import SfincsModel, utils
 from shapely.geometry import LineString
-
-from hydromt_sfincs import SfincsModel
-from hydromt_sfincs import utils
-
 
 __all__ = [
     "initialize_sfincs_model",
