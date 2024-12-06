@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -17,45 +15,33 @@ __all__ = [
 ]
 
 
-def _get_predefined_data_catalogs(data_dir) -> list[str]:
-    ngei_lib = data_dir / "nos/coastal_lidar.yml"
-    lynker_lib = data_dir / "lynker_spatial/gridded_data.yml"
-    return [
-        ngei_lib,
-        lynker_lib
-    ]
-    
-def _get_predefined_grid() -> dict[str, int]:    
-    # TODO replace with zarr store
-    return {
-        "x0":-10687089,
-        "y0":3321498,
-        "dy":50,
-        "dx":50,
-        "nmax":150,
-        "mmax":250,
-        "rotation":24,
-        "epsg":3857,
-    }
-    
-def _get_predefined_depth() -> list[dict[str, int | str | float]]:
-    # TODO replace with zarr store
-    return [
-        {"elevtn": "dem", "zmin": 0.1, "zmax":25},
-        {"elevtn": "USGS_seamless_13"},
-    ]
-  
 def initialize_sfincs_model(
     root: str,
-    flowpath_id: str | None = None,
+    data_catalog_definition: list[str],
+    grid_definition: dict[str, int],
+    depth_definition: list[dict[str, int | str | float]],
 ) -> SfincsModel:
-    data_dir = Path(__file__).parents[3] / "data/data_catalogs"
-    predefined_catalogs = _get_predefined_data_catalogs(data_dir)
-    sf = SfincsModel(data_libs=predefined_catalogs, root=root, mode="w+")
-    input_data = _get_predefined_grid()
-    sf.setup_grid(**input_data)
-    depth_datasets = _get_predefined_depth()
-    sf.setup_dep(datasets_dep=depth_datasets)
+    """A fucntion to initialize a SFINCS model given a data catalog and depth definition
+
+    Parameters
+    ----------
+    root : str
+        The root path to where SFINCS will write its output
+    data_catalog_definition : list[str]
+        A list of data catalogs to be used in the SFINCS model
+    grid_definition : dict[str, int]
+        A predefined grid for the SFINCS model
+    depth_definition : list[dict[str, int  |  str  |  float]]
+        A list of dictionaries that define the depth of the model
+
+    Returns
+    -------
+    SfincsModel
+        An initialized SFINCS model
+    """
+    sf = SfincsModel(data_libs=data_catalog_definition, root=root, mode="w+")
+    sf.setup_grid(**grid_definition)
+    sf.setup_dep(datasets_dep=depth_definition)
     sf.setup_mask_active(zmin=0.3, reset_mask=True)
     return sf
 
@@ -64,8 +50,26 @@ def add_hydrofabric_outflow(
     sf: SfincsModel,
     divides: gpd.GeoDataFrame,
     nexus: gpd.GeoDataFrame,
-    terminal_node: str = "tnx-1000006230",
-):
+    terminal_node: str,
+) -> SfincsModel:
+    """Adds outflow nodes to the SFINCS model
+
+    Parameters
+    ----------
+    sf : SfincsModel
+        A base SFINCS model object with a defined grid
+    divides : gpd.GeoDataFrame
+        the divides of the hydrofabric
+    nexus : gpd.GeoDataFrame
+        the nexus points of the hydrofabric
+    terminal_node : str
+        the terminal node of the hydrofabric that will be the outflow into the ocean
+
+    Returns
+    -------
+    SfincsModel
+        An updated SFINCS model with the outflow nodes added
+    """
     terminal_nexus = nexus[nexus["id"] == terminal_node]
     include_mask = gpd.GeoDataFrame({
         "id": pd.concat([terminal_nexus["id"], divides["id"]]),
