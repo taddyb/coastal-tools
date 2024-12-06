@@ -18,12 +18,14 @@ pip install -e .
 *This assumes you have created a virtual env for your package management*
 
 ### Running tests
+Tests of the initial parameters functions are run on the LowerColorado domain (the same area that [T-Route](https://github.com/NOAA-OWP/t-route) uses) and can be executed through the following 
 ```sh
 pip install -e .[test]
-pytest test
+pytest
 ```
 
 ### Running example notebooks
+A full visualization walk through of the LowerColordo test case can be found in the example notebook
 ```sh
 pip install -e .[jupyter]
 ```

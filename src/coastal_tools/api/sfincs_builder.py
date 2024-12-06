@@ -80,17 +80,29 @@ def add_hydrofabric_outflow(
 
 def setup_subgrid(
     sf: SfincsModel,
+    depth_definition: list[dict[str, int | str | float]],
     flowpath_attributes: gpd.GeoDataFrame,
-):
+) -> SfincsModel:
+    """A wrapper function to set up subgrid definitions using the hydrofabric flowpath attributes
+
+    Parameters
+    ----------
+    sf : SfincsModel
+        The base SFINCS model object
+    flowpath_attributes : gpd.GeoDataFrame
+        the flowpath attributes of the hydrofabric
+
+    Returns
+    -------
+    SfincsModel
+        the updated SFCINS model with the subgrid definitions added
+    """
     gdf_riv = sf.geoms["rivers_inflow"].copy()
     attr = flowpath_attributes[flowpath_attributes["id"] == gdf_riv["id"].values[0]]
-    attr.columns
     gdf_riv["rivwth"] = attr["TopWdth"].values # width [m]
     gdf_riv["manning"] = attr["n"].values  # manning coefficient [s.m-1/3]
     gdf_riv["rivdph"] = attr["Y"].values # depth [m]
     gdf_riv[["geometry", "rivwth","rivdph" , "manning"]]
-    # gdf_riv = sf.geoms["rivers_inflow"].copy()
-    # flowpath_attributes[flowpath_attributes["id"] == gdf_riv["id"]]
     datasets_riv = [{"centerlines": gdf_riv}]
     gdf_riv_buf = gdf_riv.assign(geometry=gdf_riv.buffer(gdf_riv['rivwth']/2))
     da_manning = sf.grid.raster.rasterize(gdf_riv_buf, "manning", nodata=np.nan)
@@ -98,7 +110,7 @@ def setup_subgrid(
     datasets_rgh = [{"manning": da_manning}]
 
     sf.setup_subgrid(
-        datasets_dep=_get_predefined_depth(),
+        datasets_dep=depth_definition,
         datasets_rgh=datasets_rgh,
         datasets_riv=datasets_riv,
         nr_subgrid_pixels=5,
@@ -109,11 +121,31 @@ def setup_subgrid(
 
 def setup_water_level_boundaries(
     sf: SfincsModel,
-    start_time,
-    end_time,
-    boundary_points = pd.DataFrame,
-    boundary_forcings = xr.Dataset,
-):
+    start_time: np.datetime64,
+    end_time: np.datetime64,
+    boundary_points: pd.DataFrame,
+    boundary_forcings: xr.Dataset,
+) -> SfincsModel:
+    """A function to define the water level forcings and boundaries for the SFINCS model
+
+    Parameters
+    ----------
+    sf : SfincsModel
+        A base SFINCS model object
+    start_time : np.datetime64
+        The start time of the water level boundary
+    end_time : np.datetime64
+        The end time of the water level boundary
+    boundary_points : pd.DataFrame
+        A DataFrame containing the boundary points
+    boundary_forcings : xr.Dataset
+        An xarray dataset containing the boundary forcings
+
+    Returns
+    -------
+    SfincsModel
+        An updated SFINCS model with the water level boundaries
+    """
     sf.setup_config(
         tref=pd.Timestamp(start_time).strftime('%Y%m%d %H%M%S'),
         tstart=pd.Timestamp(start_time).strftime('%Y%m%d %H%M%S'),
@@ -141,7 +173,6 @@ def setup_water_level_boundaries(
         periods=bzs.shape[0],
     )
 
-    # and the actual water levels, in this case for input location 1 a water level rising from 0 to 2 meters and back to 0:
     bzspd = pd.DataFrame(index=time.values, columns=index, data=bzs)
     sf.set_forcing_1d(df_ts=bzspd, gdf_locs=bnd)
     return sf
@@ -149,52 +180,75 @@ def setup_water_level_boundaries(
 def setup_meterological_forcings(
     sf: SfincsModel,
     forcings: xr.Dataset,
-):
-    ds = sf.data_catalog.get_rasterdataset(
+) -> SfincsModel:
+    """A function to set up the meteorological forcings for the SFINCS model
+
+    Parameters
+    ----------
+    sf : SfincsModel
+        The base SFINCS model object
+    forcings : xr.Dataset
+        The meteorological forcings
+    """
+    ds: xr.Dataset = sf.data_catalog.get_rasterdataset(
         forcings,
         bbox=[
-            _ds.lon.values.min(),
-            _ds.lat.values.min(),
-            _ds.lon.values.max(),
-            _ds.lat.values.max()
+            forcings.lon.values.min(),
+            forcings.lat.values.min(),
+            forcings.lon.values.max(),
+            forcings.lat.values.max()
         ],
         buffer=100,  # Add buffer in pixels
         variables=["precip"],
         geom=sf.region,
         meta={"version": "1"},
-    )
+    ) # type: ignore
     sf.set_forcing(data=ds, name='precip')
-    
+    return sf
+
 def setup_observational_cross_sections(
     sf: SfincsModel,
-    df: pd.DataFrame,
-    terminal_catchment: str = "wb-2430687",
-):
-    mask = df["id"] == terminal_catchment
-    local_cross_sections = df[mask]
+    cross_sections: pd.DataFrame,
+    crs: str = "5070",
+) -> SfincsModel:
+    """A function to set up observational cross sections for the SFINCS model
 
+    Parameters
+    ----------
+    sf : SfincsModel
+        The base SFINCS model object
+    cross_sections : pd.DataFrame
+        A DataFrame containing the observational cross sections
+    crs : str
+        The coordinate reference system of the cross sections
+
+    Returns
+    -------
+    SfincsModel
+        An updated SFINCS model with the observational cross sections
+    """
     lines = []
     attributes = []
 
-    for cs_id, group in local_cross_sections.groupby('cs_id'):
+    for cs_id, group in cross_sections.groupby('cs_id'):
         group = group.sort_values('relative_distance')
-        line = LineString(zip(group['X'].values, group['Y'].values))
+
+        # inside of the cross-section data from Lynker-Spatial the point data is defined via X and Y coordinates
+        line = LineString(zip(group['X'].values, group['Y'].values, strict=False))
         attr = {
             'cs_id': cs_id,
-            'name': f"CS_{cs_id}", 
+            'name': f"CS_{cs_id}",
             'length': group['cs_lengthm'].iloc[0],
-            'Z_min': group['Z'].min() 
+            'Z_min': group['Z'].min()
         }
 
         lines.append(line)
         attributes.append(attr)
 
-    # Create GeoDataFrame
-    gdf = gpd.GeoDataFrame(attributes, geometry=lines)
-
-    # Set CRS - assuming your coordinates are in meters
-    # You'll need to set the correct EPSG code for your data
-    gdf = gdf.set_crs(epsg="5070", inplace=True)
+    gdf = gpd.GeoDataFrame(attributes)
+    gdf['geometry'] = lines
+    gdf = gdf.set_crs(epsg=crs, inplace=True)
     sf.setup_observation_lines(
         locations=gdf, merge=True
     )
+    return sf

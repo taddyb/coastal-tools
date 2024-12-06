@@ -2,15 +2,14 @@ from io import StringIO
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pytest
-from hydromt_sfincs import SfincsModel
-
-import coastal_tools as coast
+import xarray as xr
 
 
 @pytest.fixture
-def lower_colorado_stofs_points():
+def lower_colorado_stofs_points() -> pd.DataFrame:
     """
     Pytest fixture that returns a DataFrame containing STOFS lon/lat coordinate data
 
@@ -23,12 +22,42 @@ def lower_colorado_stofs_points():
         - Lat: Latitude coordinate
     """
     data = """ref_id,Lon,Lat
+    1,-96.22029,28.57183
+    2,-96.15505,28.58662
+    3,-96.07669,28.61743
     4,-96.01858,28.61247
     5,-95.99234,28.57649
     6,-95.94361,28.59862
-    7,-95.92857,28.64843"""
+    7,-95.92857,28.64843
+    8,-95.91665,28.69935"""
 
     return pd.read_csv(StringIO(data))
+
+@pytest.fixture
+def lower_colorado_start_time() -> np.datetime64:
+    """The start time for the Lower Colorado River test case"""
+    return np.datetime64('2023-04-01T01:00:00.000000000')
+
+@pytest.fixture
+def lower_colorado_end_time() -> np.datetime64:
+    """The start time for the Lower Colorado River test case"""
+    return np.datetime64('2023-04-03T00:00:00.000000000')
+
+@pytest.fixture
+def lower_colordao_boundary_forcings() -> xr.Dataset:
+    """The boundary forcings for the Lower Colorado River test case"""
+    forcing_path = Path(__file__).parent / "data/20230401_stofs_elev2D.th.nc"
+    return xr.open_dataset(forcing_path)
+
+@pytest.fixture
+def lower_colorado_meterological_forcings() -> xr.Dataset:
+    """The formatted meterological forcings for the Lower Colorado River test case"""
+    forcing_path = Path(__file__).parent / "data/sflux_air_1.0001.nc"
+    ds = xr.open_dataset(forcing_path)
+    ds = ds.rio.write_crs("EPSG:4326", inplace=True)
+    ds.raster.set_spatial_dims(x_dim="nx_grid", y_dim="ny_grid")
+    ds = ds.rename({"rain": "precip"})
+    return ds
 
 @pytest.fixture
 def lower_colorado_depth_definition() -> list[dict[str, int | str | float]]:
@@ -71,20 +100,20 @@ def lower_colorado_predefined_grid() -> dict[str, int]:
     }
 
 @pytest.fixture
-def lower_colorado_base_sfincs_model(lower_colorado_data_catalogs, lower_colorado_predefined_grid, lower_colorado_depth_definition, tmp_path):
-    """Creates a base model for the Lower Colorado River test case"""
-    sf = coast.initialize_sfincs_model(
-        str(tmp_path),
-        lower_colorado_data_catalogs,
-        lower_colorado_predefined_grid,
-        lower_colorado_depth_definition
-    )
-    return sf
-
-@pytest.fixture
 def lower_colorado_terminal_node() -> str:
     """The terminal node for the Lower Colorado River test case"""
     return "tnx-1000006230"
+
+@pytest.fixture
+def lower_colorado_terminal_watershed_boundary() -> str:
+    """The terminal watershed boundary for the Lower Colorado River test case"""
+    return "wb-2430687"
+
+@pytest.fixture
+def lower_colorado_cross_sections() -> pd.DataFrame:
+    """The local cross sections for the Lower Colorado River test case"""
+    cross_section_path = Path(__file__).parent / "data/lower_colorado_cross_sections.parquet"
+    return pd.read_parquet(cross_section_path)
 
 @pytest.fixture
 def lower_colorado_path() -> Path:
