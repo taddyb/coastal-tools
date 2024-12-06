@@ -165,6 +165,7 @@ cython_debug/
 src/coastal_tools/_version.py
 coastal_tools/version.py
 data/hydromt_root
+examples/tmp
 *.DS_Store
 
 

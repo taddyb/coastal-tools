@@ -41,7 +41,8 @@ def test_lower_colorado_sfincs_setup(
             sf,
             lower_colorado_divides,
             lower_colorado_nexus_points,
-            lower_colorado_terminal_node)
+            lower_colorado_terminal_node
+        )
     except FileNotFoundError as e:
         pytest.fail(f"Failed to add hydrofabric outflow: {str(e)}")
     try:
@@ -68,11 +69,18 @@ def test_lower_colorado_sfincs_setup(
         )
     except ValueError as e:
         pytest.fail(f"Failed to setup water level boundaries: {str(e)}")
-    sf = coast.setup_meterological_forcings(
-        sf,
-        lower_colorado_meterological_forcings
-    )
-    sf = coast.setup_observational_cross_sections(
-        sf,
-        lower_colorado_cross_sections,
-    )
+    try:
+        sf = coast.setup_meterological_forcings(
+            sf,
+            lower_colorado_meterological_forcings
+        )
+    except Exception as e:
+        pytest.fail(f"Failed to setup meterological forcings: {str(e)}")
+    try:
+        sf = coast.setup_observational_cross_sections(
+            sf,
+            lower_colorado_cross_sections,
+        )
+    except Exception as e:
+        pytest.fail(f"Failed to setup observational cross sections: {str(e)}")
+
