@@ -162,8 +162,8 @@ cython_debug/
 #.idea/
 
 # VCS versioning
-src/coastal_fim/_version.py
-coastal_fim/version.py
+src/coastal_tools/_version.py
+coastal_tools/version.py
 data/hydromt_root
 *.DS_Store
 
